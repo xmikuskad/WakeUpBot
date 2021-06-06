@@ -13,7 +13,6 @@
         <maven.compiler.target>13</maven.compiler.target>
     </properties>
 
-
     <dependencies>
         <dependency>
             <groupId>net.dv8tion</groupId>
@@ -29,15 +28,23 @@
         </repository>
     </repositories>
 
-
     <build>
         <plugins>
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>org.falconsocka.MainClass</mainClass>
+                            <addClasspath>true</addClasspath>
+                            <mainClass>MainClass</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>

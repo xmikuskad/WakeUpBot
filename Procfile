@@ -1,0 +1,1 @@
+worker: java -jar actual_build/DiscordBot.jar
