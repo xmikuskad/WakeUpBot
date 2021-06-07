@@ -25,15 +25,15 @@ public class MainClass extends ListenerAdapter {
 
     public static void main(String[] args) throws LoginException {
         String token = System.getenv("API_TOKEN");
-        if(isDebugging) {
+        if(token == null) {
             token = getBotToken();
         }
         if(token == null) {
-            System.out.println("Env variable not set");
+            System.out.println("Env variable not set and config not found");
             return;
         }
         JDABuilder builder = JDABuilder.createDefault(token);
-        builder.setActivity(Activity.playing("Wake up people :) Try ,help"));
+        builder.setActivity(Activity.playing("Roman je noob :) Try ,help"));
 
         builder.addEventListeners(new MainClass());
         builder.build();
@@ -74,17 +74,11 @@ public class MainClass extends ListenerAdapter {
             return;
         }
 
-        if(isDebugging && !Objects.equals(event.getChannel().getId(),testRoom)) {
-            event.getChannel().sendMessage("Maintenance, try again later").queue();
-            return;
-        }
-
-        if(!isDebugging && !Objects.equals(event.getChannel().getId(),botRoomId) && !Objects.equals(event.getChannel().getId(),testRoom)) {
-            event.getChannel().sendMessage("Wrong room noob. :)").queue();
-            return;
-        }
-
         if(!msg.isEmpty() && msg.startsWith(",wake")) {
+            if(!areChecksFine(event)) {
+                return;
+            }
+
             // Get user
             Long id = getUserId(msg);
             if(id == null) {
@@ -105,6 +99,7 @@ public class MainClass extends ListenerAdapter {
             // Get voice channels
             Guild server = null;
 
+            // Find our server
             for(Guild guild:event.getJDA().getGuilds()) {
                 if(Objects.equals(guild.getId(),arasidy)) {
                     server = guild;
@@ -114,8 +109,10 @@ public class MainClass extends ListenerAdapter {
                 isMoving = false;
                 return;
             }
+            // Find member to move
             Member member = server.getMember(userToMove);
             if(member == null) {
+                event.getChannel().sendMessage("User not in voice channel.").queue();
                 isMoving = false;
                 return;
             }
@@ -123,6 +120,7 @@ public class MainClass extends ListenerAdapter {
             VoiceChannel initialChannel = null;
 
             int emptyChannels = 0;
+            // Count if we have enough channels to move him
             for(VoiceChannel channel:channels) {
                 Set<Member> members = new HashSet<>(channel.getMembers());
                 if(members.isEmpty())
@@ -137,6 +135,7 @@ public class MainClass extends ListenerAdapter {
                 return;
             }
 
+            // Stop previous moving
             if(wakeUpBumper!= null) {
                 if(wakeUpBumper.isRunning())
                     wakeUpBumper.stopRunnable();
@@ -147,12 +146,18 @@ public class MainClass extends ListenerAdapter {
                 }
             }
 
+            // Start moving on new thread to prevent ignoring ,stop
             wakeUpBumper = new WakeUpBumper(channels,member,server,count,initialChannel,this);
             thread = new Thread(wakeUpBumper);
             thread.start();
         }
 
         if(!msg.isEmpty() && msg.startsWith(",stop")) {
+            if(!areChecksFine(event)) {
+                return;
+            }
+
+            // Stop moving user
             if(wakeUpBumper!= null) {
                 if(wakeUpBumper.isRunning())
                     wakeUpBumper.stopRunnable();
@@ -166,10 +171,30 @@ public class MainClass extends ListenerAdapter {
         }
 
         if(!msg.isEmpty() && msg.startsWith(",help")) {
+            if(!areChecksFine(event)) {
+                return;
+            }
+
+            // Return basic move guide
             event.getChannel().sendMessage(",wake @tag X - moves user X times (max 10) or 10 if not specified\n" +
+                    "Example: ,wake <@850777293739786280> 5\n"+
                     ",stop - stop moving user").queue();
         }
 
+    }
+
+    public boolean areChecksFine(MessageReceivedEvent event){
+        if(isDebugging && !Objects.equals(event.getChannel().getId(),testRoom)) {
+            event.getChannel().sendMessage("Maintenance, try again later").queue();
+            return false;
+        }
+
+        if(!isDebugging && !Objects.equals(event.getChannel().getId(),botRoomId) && !Objects.equals(event.getChannel().getId(),testRoom)) {
+            event.getChannel().sendMessage("Wrong room noob. :pinching_hand: ").queue();
+            return false;
+        }
+
+        return true;
     }
 
     public void stopMoving() {
@@ -271,22 +296,13 @@ class WakeUpBumper implements Runnable {
         mainClass.stopMoving();
     }
 
-    public boolean moveUser(VoiceChannel vc) throws Exception {
+    public boolean moveUser(VoiceChannel vc) throws InterruptedException {
         if (!vc.getMembers().isEmpty()) {
             return false;
         }
-        try {
-            server.moveVoiceMember(member, vc).queue();
-        } catch (Exception e) {
-            // To force stop execution when user DC or something
-            throw new Exception("Some problem, idk");
-        }
-        try {
-            Thread.sleep(DELAY);
-            return true;
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        server.moveVoiceMember(member, vc).queue();
+        Thread.sleep(DELAY);
+
         return true;
     }
 }
