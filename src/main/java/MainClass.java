@@ -1,6 +1,8 @@
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
+import net.dv8tion.jda.api.events.message.react.MessageReactionRemoveEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.jetbrains.annotations.NotNull;
 
@@ -16,12 +18,26 @@ public class MainClass extends ListenerAdapter {
 
     final String arasidy = "677581027379511346";
 
+    final String roleMsg = "854354694733692979";
+    final String roleRoom = "854352780394102804";
+
     boolean isMoving = false;
     static boolean isDebugging = false;
 
     Thread thread = null;
     WakeUpBumper wakeUpBumper = null;
 
+    final String valo = "\uD83D\uDD2B";
+    final String rocket = "\uD83D\uDE0E";
+    final String minecraft = "⛏";
+    final String rust = "\uD83C\uDFF9";
+    final String lol = "\uD83D\uDE42";
+
+    final String valoRole = "854352998595559465";
+    final String rocketRole = "854353349788172308";
+    final String minecraftRole = "854354125407387739";
+    final String rustRole = "854354259998933005";
+    final String lolRole = "854353530172866568";
 
     public static void main(String[] args) throws LoginException {
         String token = System.getenv("API_TOKEN");
@@ -33,7 +49,7 @@ public class MainClass extends ListenerAdapter {
             return;
         }
         JDABuilder builder = JDABuilder.createDefault(token);
-        builder.setActivity(Activity.playing("Roman je noob :) Try ,help"));
+        builder.setActivity(Activity.playing("Švanda :) Try ,help"));
 
         builder.addEventListeners(new MainClass());
         builder.build();
@@ -55,6 +71,62 @@ public class MainClass extends ListenerAdapter {
         }
 
         return null;
+    }
+
+    @Override
+    public void onMessageReactionAdd(@NotNull MessageReactionAddEvent event) {
+        super.onMessageReactionAdd(event);
+
+        if(Objects.requireNonNull(event.getUser()).isBot()) return;
+        if(event.getChannel().getId().equals(roleRoom) && event.getReaction().getMessageId().equals(roleMsg)) {
+            String reaction = event.getReaction().getReactionEmote().getAsReactionCode();
+            String roleId = getRoleId(reaction);
+
+            if(!roleId.isEmpty()) {
+                event.getGuild().addRoleToMember(event.getUserId(), Objects.requireNonNull(event.getJDA().getRoleById(roleId))).queue();
+            }
+        }
+    }
+
+    @Override
+    public void onMessageReactionRemove(@NotNull MessageReactionRemoveEvent event) {
+        super.onMessageReactionRemove(event);
+
+        if(Objects.requireNonNull(event.getUser()).isBot()) return;
+
+        if(event.getChannel().getId().equals(roleRoom) && event.getReaction().getMessageId().equals(roleMsg)) {
+            String reaction = event.getReaction().getReactionEmote().getAsReactionCode();
+            String roleId = getRoleId(reaction);
+
+            try {
+                if (!roleId.isEmpty()) {
+                    event.getGuild().removeRoleFromMember(event.getUserId(), Objects.requireNonNull(event.getJDA().getRoleById(roleId))).queue();
+                }
+            }catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public String getRoleId(String reaction) {
+        String roleId = "";
+
+        if(reaction.equals(rocket)) {
+            roleId = rocketRole;
+        }
+        if(reaction.equals(lol)) {
+            roleId = lolRole;
+        }
+        if(reaction.equals(rust)) {
+            roleId = rustRole;
+        }
+        if(reaction.equals(valo)) {
+            roleId = valoRole;
+        }
+        if(reaction.equals(minecraft)) {
+            roleId = minecraftRole;
+        }
+        return roleId;
     }
 
     @Override
@@ -181,11 +253,30 @@ public class MainClass extends ListenerAdapter {
                     ",stop - stop moving user").queue();
         }
 
+        /*if(!msg.isEmpty() && msg.startsWith(",show")) {
+            if(!areChecksFine(event)) {
+                return;
+            }
+
+            // Return basic move guide
+            event.getChannel().sendMessage("React to give yourself a role\n" +
+                    ":sunglasses: : Rocket league\n"+
+                    ":slight_smile: : League of legends\n" +
+                    ":gun: : Valorant\n" +
+                    ":pick: : Minecraft\n" +
+                    ":bow_and_arrow: : Rust").queue((message) -> {
+                event.getChannel().addReactionById(message.getId(),rocket).queue();
+                event.getChannel().addReactionById(message.getId(),lol).queue();
+                event.getChannel().addReactionById(message.getId(),valo).queue();
+                event.getChannel().addReactionById(message.getId(),minecraft).queue();
+                event.getChannel().addReactionById(message.getId(),rust).queue();
+            });
+        }*/
+
     }
 
     public boolean areChecksFine(MessageReceivedEvent event){
         if(isDebugging && !Objects.equals(event.getChannel().getId(),testRoom)) {
-            event.getChannel().sendMessage("Maintenance, try again later").queue();
             return false;
         }
 
